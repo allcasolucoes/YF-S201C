@@ -1,13 +1,16 @@
 /* 
   master
  
-  main para pegar dados do master e vandar via serial
+  main para pegar dados do slave e manda via serial
  */
 
 #include <SPI.h>
-float buf = 0.0;
+int buf = 0;
 
 void print_data_get_master();
+
+uint8_t count = 0;
+int data[4] = {0, 0, 0, 0};
 
 void setup()
 {
@@ -22,19 +25,27 @@ void setup()
 void loop(void)
 {
 
+  if(count == 4) {
+    print_data_get_master();
+  count = 0;
+  } 
+
   }
 
 
 ISR (SPI_STC_vect)   //Inerrrput routine function
 {
-  buf = SPDR;
-  print_data_get_master();
+  //buf = SPDR;
+  data[count] = SPDR;
+  count ++;
 }
+
+
 
 void print_data_get_master() {
 
-    Serial.print("buf vindo do SPI slave: ");
-    Serial.println(buf);
-    Serial.println("=============================================");
-
+  for(uint8_t i = 0; i < 4; i++) {
+    Serial.println(data[i]);
+  }
+    
 }
