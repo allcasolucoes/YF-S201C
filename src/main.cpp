@@ -1,106 +1,86 @@
 /* 
-  main file comunication slave spi
-
+  master
+ 
+  main para pegar dados do slave e manda via serial
  */
 
-#include <Arduino.h>
 #include <SPI.h>
-#define PIN3_INT_1 3
-#define SLAVE_SENSOR_1 10
-#define PIN_GET_DATA 2
 
+#define PIN_ACTIVE_SLAVE 2
 
-void increment_pulse_sensor_1();
-void send_to_master_vasao(float vasao);
-void send_to_master_vetor_test();
-void set_value_sensor();
+void print_data_get_master();
+void get_data_slave();
+int8_t check_data_is_correct();
 
-int check_sum(int *data);
-float vazao_sensor_1;
-unsigned int total_pulse_1_second;
-uint8_t pin_2_state = 0;
+uint8_t count = 0;
+int8_t check = 1;
 
 int data[4] = {0, 0, 0, 0};
 
 
 
-void setup() {
-
-  SPI.begin();
-
-  pinMode(PIN_GET_DATA, INPUT);
+void setup()
+{
   Serial.begin(9600);
-  pinMode(PIN3_INT_1, INPUT);                          // configura pino 3 para receber sinal e chamar interrupção 1
-  attachInterrupt(1, increment_pulse_sensor_1, RISING);      // habilita chamada à primeira interrupção (rotâmetro 1)
+
+  pinMode(PIN_ACTIVE_SLAVE, OUTPUT);
+  pinMode(SS, INPUT_PULLUP);
+  pinMode(MOSI, OUTPUT);
+  pinMode(SCK, INPUT);
+  SPCR |= _BV(SPE);
+  SPI.attachInterrupt();  //allows SPI interrupt
+
+  digitalWrite(PIN_ACTIVE_SLAVE, HIGH);
 
 }
 
-void loop() {
+void loop(void)
+{
   
-  total_pulse_1_second = 0;
+  if(count == 4 && check == 0) {
+    Serial.println("if linha 46");
+    print_data_get_master();
+  count = 0;
+    } 
 
-  // mudar para posteriomente interrupcao via software
-  sei();
-  delay(1000);
-  cli();      
+  }
 
-/* 
-  Equação para conversão da contagem de pulsos em fluxo (L/min) para rot. 1
-  espera-se que os fluxos não passem de 500 L/min
- */
-  vazao_sensor_1 = total_pulse_1_second / 10.7;                    
-                                                  
-  Serial.println(vazao_sensor_1); // linha para ser removida
 
-  //send_to_master_vasao(vazao_sensor_1);
-
-  pin_2_state = digitalRead(PIN_GET_DATA);
-
-// refatorar para interrupçãos
-  if(pin_2_state) {
-  send_to_master_vetor_test();
-  delay(100);
-  Serial.println("bottão precionado");
-
+ISR (SPI_STC_vect)   //Inerrrput routine function
+{
+  data[count] = SPDR;
+  count ++;
 }
 
-}
-// rotina chamada pela interrupção provocada pelo rotâmetro 1
-void increment_pulse_sensor_1() {
-  total_pulse_1_second++;
-
-}
-
-void send_to_master_vasao(float vasao) {
-
-  digitalWrite(SLAVE_SENSOR_1, LOW);
-  SPI.transfer(15);
-  delay(100);
+// factor alterar tempo de pulso para 50ms
+void get_data_slave() {
+  
+  digitalWrite(PIN_ACTIVE_SLAVE, LOW);
+  delay(500);
+  digitalWrite(PIN_ACTIVE_SLAVE, HIGH);
 }
 
-void set_value_sensor() {
-  for(int i = 0; i < 3; i++) {
-    data[i] = 15 + i;
-    }
-    data[3] = check_sum(data);
+void print_data_get_master() {
+
+  for(uint8_t i = 0; i < 4; i++) {
+    Serial.println(data[i]);
+  }
+    
 }
 
-void send_to_master_vetor_test() {
-  set_value_sensor();
-  for(int i = 0; i < 4; i++) {
-    digitalWrite(SLAVE_SENSOR_1, LOW);
-    SPI.transfer(data[i]);
-    delay(100);
-    }
-  digitalWrite(SLAVE_SENSOR_1, HIGH);
-}
+int8_t check_data_is_correct() {
+    int soma = 0;
+    int8_t result = 1;
+  for(int8_t i = 0; i < 3; i++) {
+    soma += data[i];
+  }
+  if(soma == data[3]) {
+   soma = 0;
+    result = 0;
+  } else {
 
-
-// factor para checagem de tramanho vetor
-int check_sum(int *data) {
-  int checksum = 0;
-    for(int i = 0; i < 3; i++) {
-      checksum += data[i];
-    }
-    return checksum;
+   soma = 0;
+   result = 1;
+  }
+  return result;
 }
