@@ -1,5 +1,8 @@
 /* 
-  main file comunication slave spi
+ github.com/kleysoncastro
+ 
+ ** exemplo deve ser gravado no MCU que sera responsavel por ler dados dos sensores
+  e enviar via spi
 
  */
 
