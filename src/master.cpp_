@@ -16,7 +16,7 @@ int8_t check_data_is_correct();
 uint8_t count = 0;
 int8_t check = 1;
 
-int data[4] = {0, 0, 0, 0};
+unsigned int data[4] = {0, 0, 0, 0};
 
 
 
@@ -38,7 +38,9 @@ void setup()
 void loop(void)
 {
 
+    if(!data[3] == 0) {
     print_data_get_master();
+    }
 
 }
 ISR (SPI_STC_vect)   //Inerrrput routine function
@@ -57,7 +59,7 @@ void get_data_slave() {
 
 void print_data_get_master() {
 
-  for(uint8_t i = 0; i < 4; i++) {
+  for(uint8_t i = 0; i < 3; i++) {
     Serial.println(data[i]);
   }
     
