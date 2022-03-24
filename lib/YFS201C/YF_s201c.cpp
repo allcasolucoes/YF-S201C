@@ -1,12 +1,12 @@
 #include "YF_s201c.h"
 
-SlaveSend CONFIG;
 // factor para checagem de tramanho vetor
-int check_sum(int *data_all_sensor) {
-  int checksum = 0;
+unsigned int check_sum(int *data_all_sensor) {
+  unsigned int checksum = 0;
     for(int i = 0; i < 3; i++) {
       checksum += data_all_sensor[i];
     }
+
     return checksum;
 }
 
