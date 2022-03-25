@@ -1,73 +1,114 @@
 /* 
-  main file comunication slave spi
-
+  master
+ 
+  main para pegar dados do slave e manda via serial
  */
 
-#include <Arduino.h>
 #include <SPI.h>
 #include <YF_s201c.h>
 
- Data_all_sensor_t  data_all_sensor = {0, 0, 0, 0};
+#define PIN_ACTIVE_SLAVE 7
 
-float vazao_sensor_1;
-uint8_t pin_2_state = 0;
-volatile unsigned int total_pulse_1_second = 0;
-volatile unsigned int total_pulse_1_second2 = 0;
+void print_data_get_master();
+void get_data_slave();
+
+void post_old_data();
+
+uint8_t count = 0;
+int check = 0;
+
+ Data_all_sensor_t data = {0, 0, 0, 0};
+ Data_all_sensor_t dataOld = {0, 0, 0, 0};
 
 
-struct Config_slave config_slave;
 
-void increment_pulse_sensor_1();
-void increment_pulse_sensor_2();
+void setup()
+{
 
-void send_all_data_to_master();
+  Serial.begin(9600);
 
-void setup() {
 
-  config_slave.pin_interrupt_count = 3;
-  config_slave.pin_ss = 10;
+  pinMode(PIN_ACTIVE_SLAVE, OUTPUT);
+  digitalWrite(PIN_ACTIVE_SLAVE, HIGH);
 
-  SlaveSend::config_interrupt_to_active();
-
- SPI.begin();
-
- //Serial.begin(9600);// testes devem ser removidos 
-
-  pinMode(config_slave.pin_interrupt_count, INPUT);
-
-  attachInterrupt(digitalPinToInterrupt(config_slave.pin_interrupt_count), 
-  increment_pulse_sensor_1, RISING);
-    attachInterrupt(digitalPinToInterrupt(2), 
-  increment_pulse_sensor_2, RISING);
+  
+  pinMode(SS, INPUT_PULLUP);
+  pinMode(MOSI, OUTPUT);
+  pinMode(SCK, INPUT);
+  SPCR |= _BV(SPE);
+  SPI.attachInterrupt();  //allows SPI interrupt
 
 
 }
 
-void loop() {
+void loop(void)
+{
 
-  total_pulse_1_second = 0;
-  total_pulse_1_second2 = 0;
+  get_data_slave();
 
-  sei();
-  delay(1000);
-  cli();
+  check = check_sum(data);
 
-  // testes devem ser removidos 
-  data_all_sensor[0] = total_pulse_1_second;
-  data_all_sensor[1] = total_pulse_1_second2;
+    if(data[3] == check && data[0] != 0) {
 
+    post_old_data();
+   // print_data_get_master();
+
+    } else {
+      Serial.println("Solicitando do slave");
+    }
+
+  }
+
+ISR (SPI_STC_vect)   //Inerrrput routine function
+{
+  data[count] = SPDR;
+  count ++;
+}
+
+void post_old_data() {
+
+      for(uint8_t i = 0; i < 3; i++) {
+
+      if(data[i] < dataOld[i]) {
+          Serial.print(data[i]);
+          Serial.print(" -1 ");
+          Serial.print(dataOld[i]);
+          Serial.println(" ");
+      }
+      if(data[i] == dataOld[i]) {
+          Serial.print(data[i]);
+          Serial.print(" +0 ");
+          Serial.print(dataOld[i]);
+          Serial.println(" ");
+
+      }
+      if(data[i] > dataOld[i]) {
+          Serial.print(data[i]);
+          Serial.print(" +1 ");
+          Serial.print(dataOld[i]);
+          Serial.println(" ");
+
+      }
+      Serial.println("------------");
+        }
+
+        for(uint8_t d = 0; d < 3; d++) {
+        dataOld[d] = data[d];
+        }
+}
+
+// factor alterar tempo de pulso para 50ms
+void get_data_slave() {
+  
+  digitalWrite(PIN_ACTIVE_SLAVE, LOW);
+  delay(10);
+  digitalWrite(PIN_ACTIVE_SLAVE, HIGH);
+  delay(2000);
 }
 
 
-// encapsular em uma funlçao que receve função como parametro
-  ISR (PCINT2_vect) {
-   send_to_master_vetor_data(config_slave.pin_ss, data_all_sensor);
-
-  }  
-
-void increment_pulse_sensor_1() {
-  total_pulse_1_second ++;
-}
-void increment_pulse_sensor_2() {
-  total_pulse_1_second2 ++;
+void print_data_get_master() {
+  for(uint8_t i = 0; i < 3; i++) {
+    Serial.println(data[i]);
+  } 
 }

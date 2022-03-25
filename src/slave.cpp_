@@ -7,10 +7,9 @@
 #include <SPI.h>
 #include <YF_s201c.h>
 
- Data_all_sensor_t  data_all_sensor = {0, 0, 0, 0};
+Data_all_sensor_t  data_all_sensor = {0, 0, 0, 0};
 
-float vazao_sensor_1;
-uint8_t pin_2_state = 0;
+
 volatile unsigned int total_pulse_1_second = 0;
 volatile unsigned int total_pulse_1_second2 = 0;
 
@@ -20,14 +19,13 @@ struct Config_slave config_slave;
 void increment_pulse_sensor_1();
 void increment_pulse_sensor_2();
 
-void send_all_data_to_master();
-
 void setup() {
 
   config_slave.pin_interrupt_count = 3;
   config_slave.pin_ss = 10;
 
-  SlaveSend::config_interrupt_to_active();
+// inicia configução para interrupcap de chamada do master
+SlaveSend::config_interrupt_to_active();
 
  SPI.begin();
 
@@ -39,6 +37,8 @@ void setup() {
   increment_pulse_sensor_1, RISING);
     attachInterrupt(digitalPinToInterrupt(2), 
   increment_pulse_sensor_2, RISING);
+
+
 }
 
 void loop() {
@@ -54,21 +54,16 @@ void loop() {
   data_all_sensor[0] = total_pulse_1_second;
   data_all_sensor[1] = total_pulse_1_second2;
 
-/*    Serial.print("Leiruta numero pulos1: ");
-  Serial.println(total_pulse_1_second);
- Serial.print("Leiruta numero pulos2: ");
- Serial.println(total_pulse_1_second2);  */
-
-
-
- 
 }
 
 
 // encapsular em uma funlçao que receve função como parametro
-ISR (PCINT2_vect) {
-  send_all_data_to_master();
-  }
+  ISR (PCINT2_vect) {
+  PCICR |= B00000000; // disabled interrupts on PD port
+  send_to_master_vetor_data(config_slave.pin_ss, data_all_sensor);
+  delayMicroseconds(100);
+  PCICR |= B00000100; // Enable interrupts on PD port
+  }  
 
 void increment_pulse_sensor_1() {
   total_pulse_1_second ++;
@@ -76,9 +71,3 @@ void increment_pulse_sensor_1() {
 void increment_pulse_sensor_2() {
   total_pulse_1_second2 ++;
 }
-
- void send_all_data_to_master() {
-    
-   send_to_master_vetor_data(config_slave.pin_ss, data_all_sensor);
-   //Serial.print("Interrupcao 4");
-} 
