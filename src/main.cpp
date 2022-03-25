@@ -1,74 +1,73 @@
 /* 
-  master
- 
-  main para pegar dados do slave e manda via serial
+  main file comunication slave spi
+
  */
 
+#include <Arduino.h>
 #include <SPI.h>
 #include <YF_s201c.h>
 
-#define PIN_ACTIVE_SLAVE 2
+ Data_all_sensor_t  data_all_sensor = {0, 0, 0, 0};
 
-void print_data_get_master();
-void get_data_slave();
-
-uint8_t count = 0;
-int8_t check = 1;
-unsigned int sumTest = 0;
-
- Data_all_sensor_t data = {0, 0, 0, 0};
+float vazao_sensor_1;
+uint8_t pin_2_state = 0;
+volatile unsigned int total_pulse_1_second = 0;
+volatile unsigned int total_pulse_1_second2 = 0;
 
 
-void setup()
-{
-  Serial.begin(9600);
+struct Config_slave config_slave;
 
-  pinMode(PIN_ACTIVE_SLAVE, OUTPUT);
-  pinMode(SS, INPUT_PULLUP);
-  pinMode(MOSI, OUTPUT);
-  pinMode(SCK, INPUT);
-  SPCR |= _BV(SPE);
-  SPI.attachInterrupt();  //allows SPI interrupt
+void increment_pulse_sensor_1();
+void increment_pulse_sensor_2();
 
-  digitalWrite(PIN_ACTIVE_SLAVE, HIGH);
+void send_all_data_to_master();
+
+void setup() {
+
+  config_slave.pin_interrupt_count = 3;
+  config_slave.pin_ss = 10;
+
+  SlaveSend::config_interrupt_to_active();
+
+ SPI.begin();
+
+ //Serial.begin(9600);// testes devem ser removidos 
+
+  pinMode(config_slave.pin_interrupt_count, INPUT);
+
+  attachInterrupt(digitalPinToInterrupt(config_slave.pin_interrupt_count), 
+  increment_pulse_sensor_1, RISING);
+    attachInterrupt(digitalPinToInterrupt(2), 
+  increment_pulse_sensor_2, RISING);
+
 
 }
 
-void loop(void)
-{
+void loop() {
 
-  sumTest = check_sum(data);
+  total_pulse_1_second = 0;
+  total_pulse_1_second2 = 0;
 
-    if(!data[3] == 0) {
-    print_data_get_master();
-    }   
+  sei();
+  delay(1000);
+  cli();
 
+  // testes devem ser removidos 
+  data_all_sensor[0] = total_pulse_1_second;
+  data_all_sensor[1] = total_pulse_1_second2;
 
-  
-  }
-
-ISR (SPI_STC_vect)   //Inerrrput routine function
-{
-  data[count] = SPDR;
-  count ++;
 }
 
-// factor alterar tempo de pulso para 50ms
-void get_data_slave() {
-  
-  digitalWrite(PIN_ACTIVE_SLAVE, LOW);
-  delay(10);
-  digitalWrite(PIN_ACTIVE_SLAVE, HIGH);
+
+// encapsular em uma funlçao que receve função como parametro
+  ISR (PCINT2_vect) {
+   send_to_master_vetor_data(config_slave.pin_ss, data_all_sensor);
+
+  }  
+
+void increment_pulse_sensor_1() {
+  total_pulse_1_second ++;
 }
-
-void print_data_get_master() {
-
-  for(uint8_t i = 0; i < 3; i++) {
-    Serial.println(data[i]);
-  }
-      Serial.print("checksum");
-    Serial.println(sumTest);
-    Serial.print("do spi ");
-    Serial.println(data[3]);
-    
+void increment_pulse_sensor_2() {
+  total_pulse_1_second2 ++;
 }
