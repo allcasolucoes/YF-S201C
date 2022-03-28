@@ -9,16 +9,20 @@
 
 #define PIN_ACTIVE_SLAVE 7
 
-void print_data_get_master();
 void get_data_slave();
+float fluxo(int pulso);
+void send_data_fluxo(int *pulse);
 
 void post_old_data();
 
 uint8_t count = 0;
 int check = 0;
+uint8_t updade = 0;
 
  Data_all_sensor_t data = {0, 0, 0, 0};
- Data_all_sensor_t dataOld = {0, 0, 0, 0};
+ //Data_all_sensor_t dataOld = {24, 26, 25, 75};
+  volatile int dataOld[4] = {24, 26, 25, 75};
+
 
 
 
@@ -50,12 +54,18 @@ void loop(void)
 
     if(data[3] == check && data[0] != 0) {
 
-    post_old_data();
-   // print_data_get_master();
+      delay(200);
+    //post_old_data();
+    send_data_fluxo(data);
 
     } else {
       Serial.println("Solicitando do slave");
     }
+
+    for(int i = 0; i < 3; i++) {
+      Serial.println(data[i]);
+    }
+   
 
   }
 
@@ -65,37 +75,6 @@ ISR (SPI_STC_vect)   //Inerrrput routine function
   count ++;
 }
 
-void post_old_data() {
-
-      for(uint8_t i = 0; i < 3; i++) {
-
-      if(data[i] < dataOld[i]) {
-          Serial.print(data[i]);
-          Serial.print(" -1 ");
-          Serial.print(dataOld[i]);
-          Serial.println(" ");
-      }
-      if(data[i] == dataOld[i]) {
-          Serial.print(data[i]);
-          Serial.print(" +0 ");
-          Serial.print(dataOld[i]);
-          Serial.println(" ");
-
-      }
-      if(data[i] > dataOld[i]) {
-          Serial.print(data[i]);
-          Serial.print(" +1 ");
-          Serial.print(dataOld[i]);
-          Serial.println(" ");
-
-      }
-      Serial.println("------------");
-        }
-
-        for(uint8_t d = 0; d < 3; d++) {
-        dataOld[d] = data[d];
-        }
-}
 
 // factor alterar tempo de pulso para 50ms
 void get_data_slave() {
@@ -107,8 +86,37 @@ void get_data_slave() {
 }
 
 
-void print_data_get_master() {
-  for(uint8_t i = 0; i < 3; i++) {
-    Serial.println(data[i]);
-  } 
+
+
+float fluxo(int pulso) {
+return pulso / 10.7;
+
+}
+
+void send_data_fluxo(int *pulse) {
+  Serial.println("---------------------");
+    int i;
+    for(i = 0; i < 3; i++) {
+        
+    float tmp = 0;
+    if(pulse[i] > dataOld[i]) {
+        dataOld[i] = dataOld[i] + 1;
+        tmp = dataOld[i]  / 10.7;
+       
+         Serial.println(tmp);
+    } 
+    if(pulse[i] < dataOld[i]) {
+         dataOld[i] = dataOld[i] - 1;
+        tmp = dataOld[i]  / 10.7;
+         Serial.println(tmp);
+    } 
+     if(pulse[i] == dataOld[i]) {
+        tmp = dataOld[i] / 10.7;
+         Serial.println(tmp);
+    }
+        
+    }
+  Serial.println("###############");
+
+   
 }
