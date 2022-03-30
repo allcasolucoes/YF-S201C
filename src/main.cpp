@@ -11,7 +11,9 @@
 
 void get_data_slave();
 float fluxo(int pulso);
-void send_data_fluxo(int *pulse);
+void send_data_fluxo(int *pulse,volatile int *dataOld);
+
+void view_data_old(volatile int *data);
 
 void post_old_data();
 
@@ -21,9 +23,7 @@ uint8_t updade = 0;
 
  Data_all_sensor_t data = {0, 0, 0, 0};
  //Data_all_sensor_t dataOld = {24, 26, 25, 75};
-  volatile int dataOld[4] = {24, 26, 25, 75};
-
-
+  volatile int data_antiga[4] = {5, 5, 5, 75};
 
 
 void setup()
@@ -56,16 +56,15 @@ void loop(void)
 
       delay(200);
     //post_old_data();
-    send_data_fluxo(data);
+    send_data_fluxo(data, data_antiga);
 
     } else {
-      Serial.println("Solicitando do slave");
-    }
+      Serial.println("Aguardando dados do modulo");
 
-    for(int i = 0; i < 3; i++) {
-      Serial.println(data[i]);
-    }
-   
+    }   
+
+    Serial.println("----- data");
+    view_data_old(data);
 
   }
 
@@ -80,12 +79,10 @@ ISR (SPI_STC_vect)   //Inerrrput routine function
 void get_data_slave() {
   
   digitalWrite(PIN_ACTIVE_SLAVE, LOW);
-  delay(10);
+  delay(500);
   digitalWrite(PIN_ACTIVE_SLAVE, HIGH);
   delay(2000);
 }
-
-
 
 
 float fluxo(int pulso) {
@@ -93,20 +90,20 @@ return pulso / 10.7;
 
 }
 
-void send_data_fluxo(int *pulse) {
+void send_data_fluxo(int *pulse,volatile int *dataOld) {
   Serial.println("---------------------");
     int i;
     for(i = 0; i < 3; i++) {
         
     float tmp = 0;
     if(pulse[i] > dataOld[i]) {
-        dataOld[i] = dataOld[i] + 1;
+       dataOld[i] += 1;
         tmp = dataOld[i]  / 10.7;
        
          Serial.println(tmp);
     } 
     if(pulse[i] < dataOld[i]) {
-         dataOld[i] = dataOld[i] - 1;
+         dataOld[i] -= 1;
         tmp = dataOld[i]  / 10.7;
          Serial.println(tmp);
     } 
@@ -118,5 +115,10 @@ void send_data_fluxo(int *pulse) {
     }
   Serial.println("###############");
 
-   
+}
+
+void view_data_old(volatile int *data) {
+       for(int i = 0; i < 3; i++) {
+      Serial.println(data[i]);
+    }
 }
