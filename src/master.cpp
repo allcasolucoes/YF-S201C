@@ -1,7 +1,7 @@
 /* 
   master
- 
   main para pegar dados do slave e manda via serial
+ 
  */
 
 #include <SPI.h>
@@ -12,6 +12,8 @@
 void get_data_slave();
 float fluxo(int pulso);
 void send_data_fluxo(int *pulse,volatile int *dataOld);
+  volatile int data_antiga[4] = {100, 100, 0, 200};
+
 
 void view_data_old(volatile int *data);
 
@@ -23,7 +25,6 @@ uint8_t updade = 0;
 
  Data_all_sensor_t data = {0, 0, 0, 0};
  //Data_all_sensor_t dataOld = {24, 26, 25, 75};
-  volatile int data_antiga[4] = {5, 5, 5, 75};
 
 
 void setup()
@@ -48,23 +49,30 @@ void setup()
 void loop(void)
 {
 
+
   get_data_slave();
 
   check = check_sum(data);
 
     if(data[3] == check && data[0] != 0) {
 
-      delay(200);
-    //post_old_data();
-    send_data_fluxo(data, data_antiga);
+
+    do {
+               for(int i = 0; i < 3; i++) {
+           data_antiga[i] = data[i];
+    }
+
+      send_data_fluxo(data, data_antiga);
+
+    } while(check_sum(data) != check_sum(data_antiga));
+    
 
     } else {
       Serial.println("Aguardando dados do modulo");
 
-    }   
+    }  
+    
 
-    Serial.println("----- data");
-    view_data_old(data);
 
   }
 
@@ -99,16 +107,18 @@ void send_data_fluxo(int *pulse,volatile int *dataOld) {
     if(pulse[i] > dataOld[i]) {
        dataOld[i] += 1;
         tmp = dataOld[i]  / 10.7;
-       
+         Serial.print(" +1 ");
          Serial.println(tmp);
     } 
     if(pulse[i] < dataOld[i]) {
          dataOld[i] -= 1;
         tmp = dataOld[i]  / 10.7;
+         Serial.print(" -1 ");
          Serial.println(tmp);
     } 
      if(pulse[i] == dataOld[i]) {
         tmp = dataOld[i] / 10.7;
+         Serial.print(" +0 ");
          Serial.println(tmp);
     }
         
